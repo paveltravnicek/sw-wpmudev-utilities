@@ -13,6 +13,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+require __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
+
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$swUpdateChecker = PucFactory::buildUpdateChecker(
+	'https://github.com/paveltravnicek/sw-wpmudev-utilities/',
+	__FILE__,
+	'sw-wpmudev-utilities'
+);
+
+$swUpdateChecker->setBranch('main');
+$swUpdateChecker->getVcsApi()->enableReleaseAssets('/\.zip$/i');
+
 final class SW_WPMUDEV_Utilities {
 	private const OPTION_KEY = 'sw_forminator_csv_mail';
 	private const MENU_SLUG  = 'sw-forminator-csv';
