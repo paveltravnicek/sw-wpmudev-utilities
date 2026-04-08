@@ -1,0 +1,203 @@
+/* Smart Websites – WPMU DEV Utilities admin */
+.swu-wrap {
+	max-width: none;
+	width: auto;
+	margin: 24px 20px 0 0;
+	padding-bottom: 1px;
+	box-sizing: border-box;
+}
+
+.swu-hero {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 24px;
+	padding: 30px;
+	border-radius: 28px;
+	background: linear-gradient(90deg, #04478A 0%, #0096E2 100%);
+	color: #fff;
+	box-shadow: 0 18px 40px rgba(4, 71, 138, 0.18);
+	margin-bottom: 22px;
+}
+
+.swu-hero__content {
+	flex: 1 1 640px;
+	min-width: 0;
+}
+
+.swu-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 14px;
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.16);
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: .04em;
+	text-transform: uppercase;
+	margin-bottom: 18px;
+}
+
+.swu-wrap h1,
+.swu-hero h1 {
+	margin: 0 0 14px;
+	font-size: 42px;
+	line-height: 1.08;
+	color: #fff;
+}
+
+.swu-intro,
+.swu-hero p {
+	margin: 0;
+	font-size: 0.9rem;
+	line-height: 1.2;
+	max-width: 72ch;
+	color: rgba(255, 255, 255, 0.94);
+}
+
+.swu-hero__meta {
+	flex: 0 0 220px;
+	display: flex;
+	align-items: flex-start;
+	justify-content: flex-end;
+}
+
+.swu-stat {
+	min-width: 220px;
+	padding: 18px 20px;
+	border-radius: 20px;
+	background: rgba(255, 255, 255, 0.14);
+	backdrop-filter: blur(8px);
+	text-align: left;
+}
+
+.swu-stat strong {
+	display: block;
+	font-size: 24px;
+	color: #fff;
+}
+
+.swu-stat span {
+	display: block;
+	margin-top: 4px;
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.notice {
+	background: #111111;
+	border: 1px solid #111111;
+	padding: 15px;
+	border-radius: 15px;
+	color: #fff;
+	box-shadow: none;
+}
+
+.notice p,
+.notice p a {
+	color: #fff;
+}
+
+.notice.notice-success {
+	border-left: 4px solid #00a32a;
+}
+
+.notice.notice-error,
+.notice.error {
+	border-left: 4px solid #d63638;
+}
+
+.notice.notice-warning {
+	border-left: 4px solid #dba617;
+}
+
+.notice.notice-info,
+.notice.updated {
+	border-left: 4px solid #72aee6;
+}
+
+.swu-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 18px;
+	padding: 22px 24px;
+	box-shadow: 0 8px 24px rgba(16, 24, 40, 0.05);
+}
+
+.swu-card .form-table th {
+	width: 220px;
+}
+
+.swu-card textarea.code {
+	font-family: Consolas, Monaco, monospace;
+	line-height: 1.5;
+}
+
+@media (max-width: 960px) {
+	.swu-wrap {
+		margin-right: 12px;
+	}
+
+	.swu-hero {
+		padding: 22px;
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.swu-hero__content {
+		flex: 1 1 auto;
+		width: 100%;
+	}
+
+	.swu-hero h1 {
+		font-size: 34px;
+	}
+
+	.swu-hero__meta {
+		justify-content: flex-start;
+		width: 100%;
+		flex: 1 1 auto;
+		margin-top: 8px;
+	}
+
+	.swu-stat {
+		min-width: 0;
+		width: 100%;
+	}
+}
+
+@media (max-width: 782px) {
+	.swu-wrap {
+		margin-right: 10px;
+	}
+
+	.swu-hero {
+		padding: 20px;
+		border-radius: 24px;
+	}
+
+	.swu-hero h1 {
+		font-size: 1.8rem;
+		line-height: 1.15;
+		margin-bottom: 12px;
+	}
+
+	.swu-badge {
+		margin-bottom: 16px;
+	}
+
+	.swu-stat {
+		padding: 16px 18px;
+		border-radius: 18px;
+	}
+
+	.swu-card {
+		padding: 18px;
+		border-radius: 12px;
+	}
+
+	.swu-card .form-table th {
+		width: auto;
+	}
+}
