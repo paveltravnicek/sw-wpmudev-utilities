@@ -125,6 +125,125 @@
 	box-shadow: 0 8px 24px rgba(16, 24, 40, 0.05);
 }
 
+.swu-card + .swu-card {
+	margin-top: 18px;
+}
+
+.swu-card__head {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 16px;
+	margin-bottom: 18px;
+}
+
+.swu-card__head h2 {
+	margin: 0 0 6px;
+	font-size: 24px;
+	line-height: 1.2;
+}
+
+.swu-card--licence {
+	margin-bottom: 18px;
+}
+
+.swu-licence-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 9px 14px;
+	border-radius: 999px;
+	font-weight: 700;
+	font-size: 13px;
+	white-space: nowrap;
+}
+
+.swu-licence-badge--active {
+	background: rgba(0, 163, 42, 0.12);
+	color: #06752c;
+}
+
+.swu-licence-badge--inactive {
+	background: rgba(214, 54, 56, 0.1);
+	color: #b42318;
+}
+
+.swu-licence-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 16px;
+	margin-bottom: 18px;
+}
+
+.swu-licence-item {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	padding: 16px 18px;
+	border-radius: 16px;
+	background: #f8fafc;
+	border: 1px solid #e5e7eb;
+}
+
+.swu-licence-item strong {
+	font-size: 16px;
+	line-height: 1.35;
+	color: #111827;
+}
+
+.swu-licence-item span {
+	color: #4b5563;
+}
+
+.swu-licence-label {
+	font-size: 12px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: .04em;
+	color: #6b7280;
+}
+
+.swu-license-form-wrap {
+	padding-top: 6px;
+	border-top: 1px solid #e5e7eb;
+}
+
+.swu-license-form {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.swu-license-form input[type="text"] {
+	max-width: 420px;
+}
+
+.swu-license-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	margin-top: 4px;
+}
+
+.swu-note {
+	padding: 14px 16px;
+	border-radius: 14px;
+	background: #eff6ff;
+	border: 1px solid #bfdbfe;
+	color: #1d4ed8;
+}
+
+.is-readonly {
+	opacity: 0.92;
+}
+
+.is-readonly input:not([type="hidden"]),
+.is-readonly textarea,
+.is-readonly select,
+.is-readonly button {
+	pointer-events: none;
+}
+
 .swu-card .form-table th {
 	width: 220px;
 }
@@ -165,6 +284,10 @@
 		min-width: 0;
 		width: 100%;
 	}
+
+	.swu-licence-grid {
+		grid-template-columns: 1fr;
+	}
 }
 
 @media (max-width: 782px) {
@@ -195,6 +318,10 @@
 	.swu-card {
 		padding: 18px;
 		border-radius: 12px;
+	}
+
+	.swu-card__head {
+		flex-direction: column;
 	}
 
 	.swu-card .form-table th {
