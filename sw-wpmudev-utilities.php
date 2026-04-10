@@ -7,11 +7,10 @@
  * Author URI: https://smart-websites.cz
  * Update URI: https://github.com/paveltravnicek/sw-wpmudev-utilities/
  * Text Domain: sw-wpmudev-utilities
+ * SW Plugin: yes
+ * SW Service Type: passive
+ * SW License Group: both
  */
-
-if ( ! defined( 'ABSPATH' ) ) {
-	exit;
-}
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -27,14 +26,21 @@ $swUpdateChecker = PucFactory::buildUpdateChecker(
 	'sw-wpmudev-utilities'
 );
 
-$swUpdateChecker->setBranch('main');
-$swUpdateChecker->getVcsApi()->enableReleaseAssets('/\.zip$/i');
+$swUpdateChecker->setBranch( 'main' );
+$swUpdateChecker->getVcsApi()->enableReleaseAssets( '/\.zip$/i' );
 
 final class SW_WPMUDEV_Utilities {
-	private const OPTION_KEY = 'sw_forminator_csv_mail';
-	private const MENU_SLUG  = 'sw-forminator-csv';
+	private const OPTION_KEY        = 'sw_forminator_csv_mail';
+	private const MENU_SLUG         = 'sw-forminator-csv';
+	private const LICENSE_OPTION    = 'sw_wpmudev_utilities_license';
+	private const LICENSE_CRON_HOOK = 'sw_wpmudev_utilities_license_daily_check';
+	private const HUB_BASE          = 'https://smart-websites.cz';
+	private const PLUGIN_SLUG       = 'sw-wpmudev-utilities';
 
 	public static function init(): void {
+		register_activation_hook( __FILE__, [ __CLASS__, 'activate' ] );
+		register_deactivation_hook( __FILE__, [ __CLASS__, 'deactivate' ] );
+
 		add_action( 'login_enqueue_scripts', [ __CLASS__, 'print_login_error_override_script' ] );
 		add_action( 'admin_menu', [ __CLASS__, 'register_admin_page' ] );
 		add_action( 'admin_enqueue_scripts', [ __CLASS__, 'enqueue_admin_assets' ] );
@@ -42,6 +48,31 @@ final class SW_WPMUDEV_Utilities {
 		add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), [ __CLASS__, 'add_plugin_action_links' ] );
 		add_action( 'plugins_loaded', [ __CLASS__, 'register_defender_otp_whitelabel' ], -9999 );
 		add_filter( 'wp_mail', [ __CLASS__, 'filter_forminator_csv_mail' ], 20 );
+		add_action( self::LICENSE_CRON_HOOK, [ __CLASS__, 'cron_refresh_plugin_license' ] );
+
+		if ( is_admin() ) {
+			add_action( 'admin_post_sw_wpmudev_utilities_verify_license', [ __CLASS__, 'handle_verify_license' ] );
+			add_action( 'admin_post_sw_wpmudev_utilities_remove_license', [ __CLASS__, 'handle_remove_license' ] );
+			add_action( 'admin_init', [ __CLASS__, 'maybe_refresh_plugin_license' ] );
+			add_action( 'admin_init', [ __CLASS__, 'block_direct_deactivate' ] );
+		}
+	}
+
+	public static function activate(): void {
+		if ( ! wp_next_scheduled( self::LICENSE_CRON_HOOK ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'twicedaily', self::LICENSE_CRON_HOOK );
+		}
+	}
+
+	public static function deactivate(): void {
+		$timestamp = wp_next_scheduled( self::LICENSE_CRON_HOOK );
+		if ( $timestamp ) {
+			wp_unschedule_event( $timestamp, self::LICENSE_CRON_HOOK );
+		}
+	}
+
+	public static function cron_refresh_plugin_license(): void {
+		self::refresh_plugin_license( 'cron' );
 	}
 
 	private static function get_allowed_admin_identities(): array {
@@ -75,24 +106,99 @@ final class SW_WPMUDEV_Utilities {
 		return in_array( $email, array_map( 'strtolower', $identities['emails'] ), true );
 	}
 
-	public static function add_plugin_action_links( array $links ): array {
-		if ( ! self::is_allowed_admin_user() ) {
-			return $links;
+	private static function default_license_state(): array {
+		return [
+			'key'          => '',
+			'status'       => 'missing',
+			'type'         => '',
+			'valid_to'     => '',
+			'domain'       => '',
+			'message'      => '',
+			'last_check'   => 0,
+			'last_success' => 0,
+		];
+	}
+
+	private static function get_license_state(): array {
+		$state = get_option( self::LICENSE_OPTION, [] );
+		if ( ! is_array( $state ) ) {
+			$state = [];
 		}
 
-		array_unshift(
-			$links,
-			sprintf(
-				'<a href="%s">%s</a>',
-				esc_url( admin_url( 'tools.php?page=' . self::MENU_SLUG ) ),
-				esc_html__( 'Nastavení', 'sw-wpmudev-utilities' )
-			)
-		);
+		return wp_parse_args( $state, self::default_license_state() );
+	}
+
+	private static function update_license_state( array $data ): void {
+		$current = self::get_license_state();
+		$new     = array_merge( $current, $data );
+
+		$new['key']          = sanitize_text_field( (string) ( $new['key'] ?? '' ) );
+		$new['status']       = sanitize_key( (string) ( $new['status'] ?? 'missing' ) );
+		$new['type']         = sanitize_key( (string) ( $new['type'] ?? '' ) );
+		$new['valid_to']     = sanitize_text_field( (string) ( $new['valid_to'] ?? '' ) );
+		$new['domain']       = sanitize_text_field( (string) ( $new['domain'] ?? '' ) );
+		$new['message']      = sanitize_text_field( (string) ( $new['message'] ?? '' ) );
+		$new['last_check']   = (int) ( $new['last_check'] ?? 0 );
+		$new['last_success'] = (int) ( $new['last_success'] ?? 0 );
+
+		update_option( self::LICENSE_OPTION, $new, false );
+	}
+
+	private static function get_management_context(): array {
+		$guard_present       = function_exists( 'sw_guard_get_service_state' );
+		$management_status   = $guard_present ? (string) get_option( 'swg_management_status', 'NONE' ) : 'NONE';
+		$service_state       = $guard_present ? (string) sw_guard_get_service_state( self::PLUGIN_SLUG ) : 'off';
+		$guard_last_success  = $guard_present ? (int) get_option( 'swg_last_success_ts', 0 ) : 0;
+		$connected_recently  = $guard_last_success > 0 && ( time() - $guard_last_success ) <= ( 8 * DAY_IN_SECONDS );
+
+		return [
+			'guard_present'       => $guard_present,
+			'management_status'   => $management_status,
+			'service_state'       => in_array( $service_state, [ 'active', 'passive', 'off' ], true ) ? $service_state : 'off',
+			'guard_last_success'  => $guard_last_success,
+			'connected_recently'  => $connected_recently,
+			'is_active'           => $guard_present && $connected_recently && 'ACTIVE' === $management_status && 'active' === $service_state,
+		];
+	}
+
+	private static function has_active_standalone_license(): bool {
+		$license = self::get_license_state();
+		return '' !== $license['key'] && 'active' === $license['status'] && 'plugin_single' === $license['type'];
+	}
+
+	private static function plugin_is_operational(): bool {
+		$management = self::get_management_context();
+		if ( $management['is_active'] ) {
+			return true;
+		}
+
+		return self::has_active_standalone_license();
+	}
+
+	public static function add_plugin_action_links( array $links ): array {
+		if ( self::is_allowed_admin_user() ) {
+			array_unshift(
+				$links,
+				sprintf(
+					'<a href="%s">%s</a>',
+					esc_url( admin_url( 'tools.php?page=' . self::MENU_SLUG ) ),
+					esc_html__( 'Nastavení', 'sw-wpmudev-utilities' )
+				)
+			);
+		}
+
+		$management = self::get_management_context();
+		if ( $management['is_active'] ) {
+			unset( $links['deactivate'] );
+		}
 
 		return $links;
 	}
 
 	public static function print_login_error_override_script(): void {
+		if ( ! self::plugin_is_operational() ) {
+			return;
+		}
 		?>
 		<script>
 			document.addEventListener('DOMContentLoaded', function () {
@@ -108,13 +214,17 @@ final class SW_WPMUDEV_Utilities {
 	}
 
 	public static function register_defender_otp_whitelabel(): void {
+		if ( ! self::plugin_is_operational() ) {
+			return;
+		}
+
 		if ( ! defined( 'DEFENDER_VERSION' ) ) {
 			return;
 		}
 
 		add_filter(
 			'random_password',
-			function( $password, $length, $special_chars, $extra_special_chars ) {
+			function ( $password, $length, $special_chars, $extra_special_chars ) {
 				$GLOBALS['_wds_last_random_pwd'] = $password;
 				return $password;
 			},
@@ -124,8 +234,8 @@ final class SW_WPMUDEV_Utilities {
 
 		add_filter(
 			'wp_mail',
-			function( $mail ) {
-				if ( ! is_array( $mail ) ) {
+			function ( $mail ) {
+				if ( ! self::plugin_is_operational() || ! is_array( $mail ) ) {
 					return $mail;
 				}
 
@@ -147,6 +257,10 @@ final class SW_WPMUDEV_Utilities {
 	}
 
 	public static function allow_branda_base64_images( $value, $old_value, $option ) {
+		if ( ! self::plugin_is_operational() ) {
+			return $value;
+		}
+
 		if (
 			current_user_can( 'unfiltered_html' ) &&
 			! empty( $_POST['module'] ) &&
@@ -169,14 +283,16 @@ final class SW_WPMUDEV_Utilities {
 		];
 	}
 
-
 	private static function get_plugin_version(): string {
-		if ( ! function_exists( 'get_plugin_data' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		static $version = null;
+
+		if ( null !== $version ) {
+			return $version;
 		}
 
-		$data = get_plugin_data( __FILE__, false, false );
-		return ! empty( $data['Version'] ) ? (string) $data['Version'] : '1.3.1';
+		$data    = get_file_data( __FILE__, [ 'Version' => 'Version' ], 'plugin' );
+		$version = ! empty( $data['Version'] ) ? (string) $data['Version'] : '1.0.0';
+		return $version;
 	}
 
 	public static function register_admin_page(): void {
@@ -205,7 +321,7 @@ final class SW_WPMUDEV_Utilities {
 			'sw-wpmudev-utilities-admin',
 			$base_url . 'admin.css',
 			[],
-			file_exists( $base_dir . 'admin.css' ) ? (string) filemtime( $base_dir . 'admin.css' ) : '1.3.1'
+			file_exists( $base_dir . 'admin.css' ) ? (string) filemtime( $base_dir . 'admin.css' ) : self::get_plugin_version()
 		);
 	}
 
@@ -214,19 +330,27 @@ final class SW_WPMUDEV_Utilities {
 			wp_die( esc_html__( 'Na tuto stránku nemáte oprávnění.', 'sw-wpmudev-utilities' ) );
 		}
 
-		$defaults = self::get_csv_defaults();
-		$options  = wp_parse_args( get_option( self::OPTION_KEY, [] ), $defaults );
+		$defaults          = self::get_csv_defaults();
+		$options           = wp_parse_args( get_option( self::OPTION_KEY, [] ), $defaults );
+		$license           = self::get_license_state();
+		$management        = self::get_management_context();
+		$is_operational    = self::plugin_is_operational();
+		$can_edit_settings = $is_operational;
+		$status_payload    = self::get_license_panel_data( $license, $management, $is_operational );
 
 		if ( isset( $_POST['sw_forminator_csv_save'] ) ) {
 			check_admin_referer( 'sw_forminator_csv_save' );
 
-			$options['to']      = sanitize_text_field( wp_unslash( $_POST['to'] ?? '' ) );
-			$options['subject'] = sanitize_text_field( wp_unslash( $_POST['subject'] ?? '' ) );
-			$options['message'] = wp_kses_post( wp_unslash( $_POST['message'] ?? '' ) );
+			if ( ! $can_edit_settings ) {
+				echo '<div class="notice notice-warning"><p><strong>Nastavení nelze uložit, protože plugin momentálně nemá platnou licenci.</strong></p></div>';
+			} else {
+				$options['to']      = sanitize_text_field( wp_unslash( $_POST['to'] ?? '' ) );
+				$options['subject'] = sanitize_text_field( wp_unslash( $_POST['subject'] ?? '' ) );
+				$options['message'] = wp_kses_post( wp_unslash( $_POST['message'] ?? '' ) );
 
-			update_option( self::OPTION_KEY, $options );
-
-			echo '<div class="notice notice-success is-dismissible"><p><strong>Nastavení bylo uloženo.</strong></p></div>';
+				update_option( self::OPTION_KEY, $options );
+				echo '<div class="notice notice-success is-dismissible"><p><strong>Nastavení bylo uloženo.</strong></p></div>';
+			}
 		}
 		?>
 		<div class="wrap swu-wrap">
@@ -244,41 +368,342 @@ final class SW_WPMUDEV_Utilities {
 				</div>
 			</div>
 
+			<?php if ( ! empty( $_GET['swu_license_message'] ) ) : ?>
+				<div class="notice notice-success"><p><?php echo esc_html( sanitize_text_field( (string) $_GET['swu_license_message'] ) ); ?></p></div>
+			<?php endif; ?>
+
+			<div class="swu-card swu-card--licence">
+				<div class="swu-card__head">
+					<div>
+						<h2><?php echo esc_html__( 'Licence pluginu', 'sw-wpmudev-utilities' ); ?></h2>
+						<p class="swu-intro"><?php echo esc_html__( 'Plugin může běžet buď v rámci platné správy webu, nebo přes samostatnou licenci.', 'sw-wpmudev-utilities' ); ?></p>
+					</div>
+					<span class="swu-licence-badge swu-licence-badge--<?php echo esc_attr( $status_payload['badge_class'] ); ?>"><?php echo esc_html( $status_payload['badge_label'] ); ?></span>
+				</div>
+
+				<div class="swu-licence-grid">
+					<div class="swu-licence-item">
+						<span class="swu-licence-label"><?php echo esc_html__( 'Režim', 'sw-wpmudev-utilities' ); ?></span>
+						<strong><?php echo esc_html( $status_payload['mode'] ); ?></strong>
+						<?php if ( $status_payload['subline'] ) : ?><span><?php echo esc_html( $status_payload['subline'] ); ?></span><?php endif; ?>
+					</div>
+					<div class="swu-licence-item">
+						<span class="swu-licence-label"><?php echo esc_html__( 'Platnost do', 'sw-wpmudev-utilities' ); ?></span>
+						<strong><?php echo esc_html( $status_payload['valid_to'] ); ?></strong>
+						<?php if ( $status_payload['domain'] ) : ?><span><?php echo esc_html( $status_payload['domain'] ); ?></span><?php endif; ?>
+					</div>
+					<div class="swu-licence-item">
+						<span class="swu-licence-label"><?php echo esc_html__( 'Poslední ověření', 'sw-wpmudev-utilities' ); ?></span>
+						<strong><?php echo esc_html( $status_payload['last_check'] ); ?></strong>
+						<?php if ( $status_payload['message'] ) : ?><span><?php echo esc_html( $status_payload['message'] ); ?></span><?php endif; ?>
+					</div>
+				</div>
+
+				<?php if ( ! $management['is_active'] ) : ?>
+					<div class="swu-license-form-wrap">
+						<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="swu-license-form">
+							<?php wp_nonce_field( 'sw_wpmudev_utilities_verify_license' ); ?>
+							<input type="hidden" name="action" value="sw_wpmudev_utilities_verify_license">
+							<label for="sw_wpmudev_utilities_license_key"><strong><?php echo esc_html__( 'Licenční kód pluginu', 'sw-wpmudev-utilities' ); ?></strong></label>
+							<input type="text" id="sw_wpmudev_utilities_license_key" name="license_key" value="<?php echo esc_attr( $license['key'] ); ?>" class="regular-text" placeholder="SWLIC-..." />
+							<p class="description"><?php echo esc_html__( 'Použijte pouze pro samostatnou licenci pluginu. Pokud máte Správu webu, kód vyplňovat nemusíte.', 'sw-wpmudev-utilities' ); ?></p>
+							<div class="swu-license-actions">
+								<button type="submit" class="button button-primary"><?php echo esc_html__( 'Ověřit a uložit licenci', 'sw-wpmudev-utilities' ); ?></button>
+								<?php if ( '' !== $license['key'] ) : ?>
+									<a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=sw_wpmudev_utilities_remove_license' ), 'sw_wpmudev_utilities_remove_license' ) ); ?>" class="button button-secondary"><?php echo esc_html__( 'Odebrat licenční kód', 'sw-wpmudev-utilities' ); ?></a>
+								<?php endif; ?>
+							</div>
+						</form>
+					</div>
+				<?php else : ?>
+					<div class="swu-note"><?php echo esc_html__( 'Plugin je provozován v rámci Správy webu. Samostatný licenční kód není potřeba.', 'sw-wpmudev-utilities' ); ?></div>
+				<?php endif; ?>
+			</div>
+
+			<?php if ( ! $can_edit_settings ) : ?>
+				<div class="notice notice-warning"><p><?php echo esc_html__( 'Plugin momentálně nemá platnou licenci. Nastavení zůstává pouze pro čtení a funkce pluginu se neprovádějí.', 'sw-wpmudev-utilities' ); ?></p></div>
+			<?php endif; ?>
+
 			<div class="swu-card">
-				<form method="post">
+				<form method="post" class="<?php echo $can_edit_settings ? '' : 'is-readonly'; ?>">
 					<?php wp_nonce_field( 'sw_forminator_csv_save' ); ?>
 
-					<table class="form-table" role="presentation">
-						<tr>
-							<th scope="row"><label for="to">Příjemce e-mailu</label></th>
-							<td>
-								<input type="text" name="to" id="to" class="regular-text" value="<?php echo esc_attr( (string) $options['to'] ); ?>">
-								<p class="description">Jedna nebo více adres oddělených čárkou.</p>
-							</td>
-						</tr>
-						<tr>
-							<th scope="row"><label for="subject">Předmět e-mailu</label></th>
-							<td>
-								<input type="text" name="subject" id="subject" class="large-text" value="<?php echo esc_attr( (string) $options['subject'] ); ?>">
-							</td>
-						</tr>
-						<tr>
-							<th scope="row"><label for="message">Text e-mailu (HTML)</label></th>
-							<td>
-								<textarea name="message" id="message" rows="16" class="large-text code"><?php echo esc_textarea( (string) $options['message'] ); ?></textarea>
-								<p class="description">Můžete použít HTML, např. <code>&lt;p&gt;</code>, <code>&lt;br&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;a&gt;</code>.</p>
-							</td>
-						</tr>
-					</table>
+					<fieldset <?php disabled( ! $can_edit_settings ); ?>>
+						<table class="form-table" role="presentation">
+							<tr>
+								<th scope="row"><label for="to">Příjemce e-mailu</label></th>
+								<td>
+									<input type="text" name="to" id="to" class="regular-text" value="<?php echo esc_attr( (string) $options['to'] ); ?>">
+									<p class="description">Jedna nebo více adres oddělených čárkou.</p>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label for="subject">Předmět e-mailu</label></th>
+								<td>
+									<input type="text" name="subject" id="subject" class="large-text" value="<?php echo esc_attr( (string) $options['subject'] ); ?>">
+								</td>
+							</tr>
+							<tr>
+								<th scope="row"><label for="message">Text e-mailu (HTML)</label></th>
+								<td>
+									<textarea name="message" id="message" rows="16" class="large-text code"><?php echo esc_textarea( (string) $options['message'] ); ?></textarea>
+									<p class="description">Můžete použít HTML, např. <code>&lt;p&gt;</code>, <code>&lt;br&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;a&gt;</code>.</p>
+								</td>
+							</tr>
+						</table>
+					</fieldset>
 
-					<?php submit_button( 'Uložit nastavení', 'primary', 'sw_forminator_csv_save' ); ?>
+					<?php submit_button( 'Uložit nastavení', 'primary', 'sw_forminator_csv_save', false, $can_edit_settings ? [] : [ 'disabled' => 'disabled' ] ); ?>
 				</form>
 			</div>
 		</div>
 		<?php
 	}
 
+	private static function get_license_panel_data( array $license, array $management, bool $is_operational ): array {
+		$format_dt = static function ( int $ts ): string {
+			return $ts > 0 ? wp_date( 'j. n. Y H:i', $ts ) : '—';
+		};
+		$format_date = static function ( string $ymd ): string {
+			if ( '' === $ymd ) {
+				return '—';
+			}
+			$ts = strtotime( $ymd . ' 12:00:00' );
+			return $ts ? wp_date( 'j. n. Y', $ts ) : $ymd;
+		};
+
+		$base = [
+			'badge_class' => 'inactive',
+			'badge_label' => 'Licence chybí',
+			'mode'        => 'Samostatná licence pluginu',
+			'subline'     => '',
+			'valid_to'    => '—',
+			'domain'      => '',
+			'last_check'  => '—',
+			'message'     => '',
+		];
+
+		if ( $management['guard_present'] ) {
+			if ( $management['is_active'] ) {
+				return array_merge(
+					$base,
+					[
+						'badge_class' => 'active',
+						'badge_label' => 'Platná licence',
+						'mode'        => 'Správa webu',
+						'valid_to'    => $format_date( (string) get_option( 'swg_managed_until', '' ) ),
+						'domain'      => (string) get_option( 'swg_licence_domain', '' ),
+						'last_check'  => $format_dt( (int) $management['guard_last_success'] ),
+					]
+				);
+			}
+			if ( 'NONE' !== $management['management_status'] ) {
+				return array_merge(
+					$base,
+					[
+						'badge_class' => 'inactive',
+						'badge_label' => 'Licence neplatná',
+						'mode'        => 'Správa webu',
+						'subline'     => 'Správa webu je po expiraci nebo omezená. Funkce pluginu se neprovádějí.',
+						'valid_to'    => $format_date( (string) get_option( 'swg_managed_until', '' ) ),
+						'domain'      => (string) get_option( 'swg_licence_domain', '' ),
+						'last_check'  => $format_dt( (int) $management['guard_last_success'] ),
+						'message'     => 'Po expiraci lze plugin deaktivovat nebo smazat.',
+					]
+				);
+			}
+		}
+
+		if ( 'active' === $license['status'] ) {
+			return array_merge(
+				$base,
+				[
+					'badge_class' => 'active',
+					'badge_label' => 'Platná licence',
+					'mode'        => 'Samostatná licence pluginu',
+					'subline'     => '' !== $license['key'] ? 'Licenční kód: ' . $license['key'] : '',
+					'valid_to'    => $format_date( (string) $license['valid_to'] ),
+					'domain'      => (string) $license['domain'],
+					'last_check'  => $format_dt( (int) $license['last_success'] ),
+					'message'     => '' !== $license['message'] ? $license['message'] : 'Plugin běží přes samostatnou licenci.',
+				]
+			);
+		}
+
+		$badge = $is_operational ? 'active' : 'inactive';
+		$label = $is_operational ? 'Platná licence' : 'Licence chybí';
+
+		return array_merge(
+			$base,
+			[
+				'badge_class' => $badge,
+				'badge_label' => $label,
+				'mode'        => 'Samostatná licence pluginu',
+				'subline'     => '' !== $license['key'] ? 'Licenční kód: ' . $license['key'] : 'Zatím nebyl uložen žádný licenční kód.',
+				'valid_to'    => $format_date( (string) $license['valid_to'] ),
+				'domain'      => (string) $license['domain'],
+				'last_check'  => $format_dt( (int) $license['last_check'] ),
+				'message'     => '' !== $license['message'] ? $license['message'] : 'Bez platné licence se funkce pluginu neprovádějí.',
+			]
+		);
+	}
+
+	public static function maybe_refresh_plugin_license(): void {
+		$management = self::get_management_context();
+		if ( $management['is_active'] ) {
+			return;
+		}
+
+		$license = self::get_license_state();
+		if ( '' === $license['key'] ) {
+			return;
+		}
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		if ( ! empty( $_POST['license_key'] ) ) {
+			return;
+		}
+		if ( $license['last_check'] > 0 && ( time() - (int) $license['last_check'] ) < ( 12 * HOUR_IN_SECONDS ) ) {
+			return;
+		}
+
+		self::refresh_plugin_license( 'admin-auto' );
+	}
+
+	private static function refresh_plugin_license( string $reason = 'manual', string $override_key = '' ): array {
+		$key = '' !== $override_key ? sanitize_text_field( $override_key ) : (string) self::get_license_state()['key'];
+		if ( '' === $key ) {
+			self::update_license_state(
+				[
+					'key'        => '',
+					'status'     => 'missing',
+					'type'       => '',
+					'valid_to'   => '',
+					'domain'     => '',
+					'message'    => 'Licenční kód zatím není uložený.',
+					'last_check' => time(),
+				]
+			);
+			return [ 'ok' => false, 'error' => 'missing_key' ];
+		}
+
+		$site_id = (string) get_option( 'swg_site_id', '' );
+		$payload = [
+			'license_key'    => $key,
+			'plugin_slug'    => self::PLUGIN_SLUG,
+			'site_id'        => $site_id,
+			'site_url'       => home_url( '/' ),
+			'reason'         => $reason,
+			'plugin_version' => self::get_plugin_version(),
+		];
+
+		$res = wp_remote_post(
+			rtrim( self::HUB_BASE, '/' ) . '/wp-json/swlic/v2/plugin-license',
+			[
+				'timeout' => 20,
+				'headers' => [ 'Content-Type' => 'application/json' ],
+				'body'    => wp_json_encode( $payload, JSON_UNESCAPED_SLASHES ),
+			]
+		);
+
+		if ( is_wp_error( $res ) ) {
+			self::update_license_state(
+				[
+					'key'        => $key,
+					'status'     => 'error',
+					'message'    => $res->get_error_message(),
+					'last_check' => time(),
+				]
+			);
+			return [ 'ok' => false, 'error' => $res->get_error_message() ];
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $res );
+		$body = (string) wp_remote_retrieve_body( $res );
+		$data = json_decode( $body, true );
+
+		if ( $code < 200 || $code >= 300 || ! is_array( $data ) ) {
+			$api_message = 'Nepodařilo se ověřit licenci.';
+			if ( is_array( $data ) && ! empty( $data['message'] ) ) {
+				$api_message = sanitize_text_field( (string) $data['message'] );
+			} elseif ( $code > 0 ) {
+				$api_message = 'Hub vrátil neočekávanou odpověď (HTTP ' . $code . ').';
+			}
+
+			self::update_license_state(
+				[
+					'key'        => $key,
+					'status'     => 'error',
+					'message'    => $api_message,
+					'last_check' => time(),
+				]
+			);
+
+			return [
+				'ok'        => false,
+				'error'     => 'bad_response',
+				'message'   => $api_message,
+				'http_code' => $code,
+			];
+		}
+
+		self::update_license_state(
+			[
+				'key'          => $key,
+				'status'       => sanitize_key( (string) ( $data['status'] ?? 'missing' ) ),
+				'type'         => sanitize_key( (string) ( $data['licence_type'] ?? 'plugin_single' ) ),
+				'valid_to'     => sanitize_text_field( (string) ( $data['valid_to'] ?? '' ) ),
+				'domain'       => sanitize_text_field( (string) ( $data['assigned_domain'] ?? '' ) ),
+				'message'      => sanitize_text_field( (string) ( $data['message'] ?? '' ) ),
+				'last_check'   => time(),
+				'last_success' => ! empty( $data['ok'] ) ? time() : 0,
+			]
+		);
+
+		return $data;
+	}
+
+	public static function handle_verify_license(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Zakázáno.', 'Zakázáno', [ 'response' => 403 ] );
+		}
+		check_admin_referer( 'sw_wpmudev_utilities_verify_license' );
+		$key     = sanitize_text_field( (string) ( $_POST['license_key'] ?? '' ) );
+		$result  = self::refresh_plugin_license( 'manual', $key );
+		$message = ! empty( $result['message'] ) ? (string) $result['message'] : ( ! empty( $result['ok'] ) ? 'Licence byla ověřena.' : 'Licenci se nepodařilo ověřit.' );
+		wp_safe_redirect( add_query_arg( 'swu_license_message', rawurlencode( $message ), admin_url( 'tools.php?page=' . self::MENU_SLUG ) ) );
+		exit;
+	}
+
+	public static function handle_remove_license(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Zakázáno.', 'Zakázáno', [ 'response' => 403 ] );
+		}
+		check_admin_referer( 'sw_wpmudev_utilities_remove_license' );
+		delete_option( self::LICENSE_OPTION );
+		wp_safe_redirect( add_query_arg( 'swu_license_message', rawurlencode( 'Licenční kód byl odebrán.' ), admin_url( 'tools.php?page=' . self::MENU_SLUG ) ) );
+		exit;
+	}
+
+	public static function block_direct_deactivate(): void {
+		$management = self::get_management_context();
+		if ( ! $management['is_active'] ) {
+			return;
+		}
+
+		$action = isset( $_GET['action'] ) ? sanitize_key( (string) $_GET['action'] ) : '';
+		$plugin = isset( $_GET['plugin'] ) ? sanitize_text_field( (string) $_GET['plugin'] ) : '';
+		if ( 'deactivate' === $action && $plugin === plugin_basename( __FILE__ ) ) {
+			wp_die( 'Tento plugin nelze deaktivovat při aktivní správě webu.', 'Chráněný plugin', [ 'response' => 403 ] );
+		}
+	}
+
 	public static function filter_forminator_csv_mail( $args ) {
+		if ( ! self::plugin_is_operational() ) {
+			return $args;
+		}
+
 		if ( ! is_array( $args ) || empty( $args['attachments'] ) ) {
 			return $args;
 		}
