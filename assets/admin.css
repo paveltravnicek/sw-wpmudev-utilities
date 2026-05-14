@@ -1,330 +1,436 @@
-/* Smart Websites – WPMU DEV Utilities admin */
+/* Smart Websites – WPMU DEV Utilities admin v2.0
+   Design systém shodný s ostatními SW pluginy
+   -------------------------------------------------- */
+
+/* ─── Wrap ───────────────────────────────────────── */
 .swu-wrap {
 	max-width: none;
-	width: auto;
-	margin: 24px 20px 0 0;
-	padding-bottom: 1px;
+	margin: 0 20px 0 0;
+	padding: 0 0 48px;
 	box-sizing: border-box;
 }
 
+/* ─── Hero ───────────────────────────────────────── */
 .swu-hero {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: flex-start;
 	justify-content: space-between;
-	gap: 24px;
-	padding: 30px;
-	border-radius: 28px;
-	background: linear-gradient(90deg, #04478A 0%, #0096E2 100%);
+	gap: 20px;
+	padding: 32px 32px 36px;
+	background: linear-gradient(120deg, #03366e 0%, #0576b5 60%, #0096E2 100%);
 	color: #fff;
-	box-shadow: 0 18px 40px rgba(4, 71, 138, 0.18);
-	margin-bottom: 22px;
+	position: relative;
+	overflow: hidden;
+	margin-bottom: 0;
+}
+
+.swu-hero::after {
+	content: '';
+	position: absolute;
+	right: -60px;
+	top: -60px;
+	width: 320px;
+	height: 320px;
+	border-radius: 50%;
+	background: rgba(255,255,255,0.05);
+	pointer-events: none;
 }
 
 .swu-hero__content {
-	flex: 1 1 640px;
+	flex: 1 1 400px;
 	min-width: 0;
+	position: relative;
+	z-index: 1;
 }
 
 .swu-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 8px;
-	padding: 7px 14px;
+	display: inline-block;
+	background: rgba(255,255,255,0.15);
+	border: 1px solid rgba(255,255,255,0.22);
+	padding: 4px 12px;
 	border-radius: 999px;
-	background: rgba(255, 255, 255, 0.16);
-	font-size: 12px;
+	font-size: 11px;
 	font-weight: 700;
-	letter-spacing: .04em;
+	letter-spacing: .06em;
 	text-transform: uppercase;
-	margin-bottom: 18px;
+	color: rgba(255,255,255,0.9);
+	margin-bottom: 14px;
 }
 
 .swu-wrap h1,
 .swu-hero h1 {
-	margin: 0 0 14px;
-	font-size: 42px;
-	line-height: 1.08;
-	color: #fff;
+	color: #fff !important;
+	font-size: 36px !important;
+	font-weight: 800 !important;
+	line-height: 1.1 !important;
+	margin: 0 0 12px !important;
+	padding: 0 !important;
+	letter-spacing: -.02em;
 }
 
-.swu-intro,
-.swu-hero p {
+.swu-hero p,
+.swu-intro {
 	margin: 0;
-	font-size: 0.9rem;
-	line-height: 1.2;
-	max-width: 72ch;
-	color: rgba(255, 255, 255, 0.94);
+	font-size: 14px;
+	line-height: 1.5;
+	max-width: 60ch;
+	color: rgba(255,255,255,0.78);
 }
 
 .swu-hero__meta {
-	flex: 0 0 220px;
+	flex: 0 0 auto;
 	display: flex;
-	align-items: flex-start;
-	justify-content: flex-end;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 10px;
+	position: relative;
+	z-index: 1;
 }
 
 .swu-stat {
-	min-width: 220px;
-	padding: 18px 20px;
-	border-radius: 20px;
-	background: rgba(255, 255, 255, 0.14);
-	backdrop-filter: blur(8px);
-	text-align: left;
+	background: rgba(255,255,255,0.13);
+	border: 1px solid rgba(255,255,255,0.2);
+	border-radius: 14px;
+	padding: 12px 18px;
+	text-align: right;
+	min-width: 130px;
 }
 
 .swu-stat strong {
 	display: block;
-	font-size: 24px;
+	font-size: 22px;
+	font-weight: 800;
 	color: #fff;
+	line-height: 1;
 }
 
 .swu-stat span {
 	display: block;
-	margin-top: 4px;
-	color: rgba(255, 255, 255, 0.9);
+	font-size: 11px;
+	color: rgba(255,255,255,0.65);
+	margin-top: 3px;
+	text-transform: uppercase;
+	letter-spacing: .05em;
 }
 
-.notice {
-	background: #111111;
-	border: 1px solid #111111;
-	padding: 15px;
-	border-radius: 15px;
+/* Licence status badge */
+.swu-hero-status {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	border-radius: 999px;
+	padding: 5px 12px 5px 8px;
+	font-size: 12px;
+	font-weight: 700;
 	color: #fff;
-	box-shadow: none;
 }
 
-.notice p,
-.notice p a {
-	color: #fff;
+.swu-hero-status--active  { background: #16a34a; }
+.swu-hero-status--inactive {
+	background: rgba(255,255,255,0.18);
+	border: 1px solid rgba(255,255,255,0.25);
 }
 
-.notice.notice-success {
-	border-left: 4px solid #00a32a;
+.swu-hero-status__dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: #86efac;
+	flex-shrink: 0;
 }
 
-.notice.notice-error,
-.notice.error {
-	border-left: 4px solid #d63638;
+.swu-hero-status--inactive .swu-hero-status__dot {
+	background: rgba(255,255,255,0.5);
 }
 
-.notice.notice-warning {
-	border-left: 4px solid #dba617;
+/* ─── Notices ────────────────────────────────────── */
+/* WP notices uvnitř wrap – tmavý styl */
+.swu-wrap .notice,
+.swu-wrap div.updated,
+.swu-wrap div.error {
+	background: rgba(0, 0, 0, 0.18) !important;
+	color: #ffffff !important;
+	border: 1px solid rgba(255, 255, 255, 0.25) !important;
+	border-left-width: 5px !important;
+	border-radius: 12px !important;
+	box-shadow: none !important;
+	margin: 0 0 10px !important;
+	padding: 12px 16px !important;
 }
 
-.notice.notice-info,
-.notice.updated {
-	border-left: 4px solid #72aee6;
+.swu-wrap .notice *,
+.swu-wrap div.updated *,
+.swu-wrap div.error * { color: #ffffff !important; }
+
+.swu-wrap .notice p,
+.swu-wrap div.updated p,
+.swu-wrap div.error p {
+	color: #ffffff !important;
+	margin: 0 !important;
+	font-size: 13px !important;
 }
 
-.swu-card {
+.swu-wrap .notice a { color: #bfdbfe !important; }
+.swu-wrap .notice-success, .swu-wrap .updated { border-left-color: #4ade80 !important; }
+.swu-wrap .notice-warning { border-left-color: #fbbf24 !important; }
+.swu-wrap .notice-error, .swu-wrap .error { border-left-color: #f87171 !important; }
+.swu-wrap .notice-info { border-left-color: #60a5fa !important; }
+
+/* Page notices – světlé, pod hero */
+.swu-page-notices {
+	padding: 16px 32px 0;
+	margin-top: 16px;
+}
+
+.swu-page-notices:empty { display: none; }
+
+.swu-page-notices .notice,
+.swu-page-notices div.updated,
+.swu-page-notices div.error {
+	background: #ffffff !important;
+	color: #1e293b !important;
+	border: 1px solid #e2e8f0 !important;
+	border-left-width: 4px !important;
+	border-radius: 12px !important;
+	box-shadow: 0 1px 4px rgba(15,23,42,0.06) !important;
+	margin: 0 0 10px !important;
+	padding: 12px 16px !important;
+}
+
+.swu-page-notices .notice p { color: #1e293b !important; margin: 0 !important; font-size: 13px !important; }
+.swu-page-notices .notice-success, .swu-page-notices .updated { border-left-color: #16a34a !important; }
+.swu-page-notices .notice-warning { border-left-color: #d97706 !important; }
+.swu-page-notices .notice-error { border-left-color: #dc2626 !important; }
+
+/* ─── Hlavní obsah ───────────────────────────────── */
+.swu-main-content {
+	padding: 20px 32px 0;
+}
+
+/* ─── Licence panel ──────────────────────────────── */
+.swu-card--licence {
 	background: #fff;
-	border: 1px solid #dcdcde;
+	border: 1px solid #e2e8f0;
 	border-radius: 18px;
-	padding: 22px 24px;
-	box-shadow: 0 8px 24px rgba(16, 24, 40, 0.05);
-}
-
-.swu-card + .swu-card {
-	margin-top: 18px;
+	overflow: hidden;
+	margin-bottom: 20px;
+	box-shadow: 0 1px 6px rgba(15,23,42,0.06);
 }
 
 .swu-card__head {
 	display: flex;
 	justify-content: space-between;
-	align-items: flex-start;
+	align-items: center;
+	padding: 20px 22px 16px;
+	border-bottom: 1px solid #f1f5f9;
 	gap: 16px;
-	margin-bottom: 18px;
 }
 
 .swu-card__head h2 {
-	margin: 0 0 6px;
-	font-size: 24px;
-	line-height: 1.2;
+	font-size: 16px !important;
+	font-weight: 700 !important;
+	color: #0f172a !important;
+	margin: 0 0 3px !important;
+	padding: 0 !important;
+	line-height: 1.3 !important;
 }
 
-.swu-card--licence {
-	margin-bottom: 18px;
+.swu-card__head .swu-intro {
+	color: #94a3b8;
+	font-size: 12px;
 }
 
 .swu-licence-badge {
+	flex-shrink: 0;
 	display: inline-flex;
 	align-items: center;
-	justify-content: center;
-	padding: 9px 14px;
+	padding: 5px 14px;
 	border-radius: 999px;
+	font-size: 12px;
 	font-weight: 700;
-	font-size: 13px;
 	white-space: nowrap;
 }
 
-.swu-licence-badge--active {
-	background: rgba(0, 163, 42, 0.12);
-	color: #06752c;
-}
-
-.swu-licence-badge--inactive {
-	background: rgba(214, 54, 56, 0.1);
-	color: #b42318;
-}
+.swu-licence-badge--active   { background: #dcfce7; color: #15803d; }
+.swu-licence-badge--inactive { background: #fee2e2; color: #b91c1c; }
 
 .swu-licence-grid {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 16px;
-	margin-bottom: 18px;
+	border-bottom: 1px solid #f1f5f9;
 }
 
 .swu-licence-item {
+	padding: 16px 22px;
+	border-right: 1px solid #f1f5f9;
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
-	padding: 16px 18px;
-	border-radius: 16px;
-	background: #f8fafc;
-	border: 1px solid #e5e7eb;
+	gap: 4px;
 }
 
-.swu-licence-item strong {
-	font-size: 16px;
-	line-height: 1.35;
-	color: #111827;
-}
-
-.swu-licence-item span {
-	color: #4b5563;
-}
+.swu-licence-item:last-child { border-right: none; }
 
 .swu-licence-label {
-	font-size: 12px;
+	font-size: 10px;
 	font-weight: 700;
+	letter-spacing: .06em;
 	text-transform: uppercase;
-	letter-spacing: .04em;
-	color: #6b7280;
+	color: #94a3b8;
 }
 
+.swu-licence-item strong { font-size: 15px; font-weight: 700; color: #0f172a; }
+.swu-licence-item span   { font-size: 12px; color: #64748b; }
+
 .swu-license-form-wrap {
-	padding-top: 6px;
-	border-top: 1px solid #e5e7eb;
+	padding: 18px 22px;
+	background: #fafcff;
+	border-top: 1px solid #f1f5f9;
 }
 
 .swu-license-form {
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
+	display: grid;
+	gap: 8px;
+	max-width: 520px;
 }
 
+.swu-license-form label { font-size: 13px; font-weight: 600; color: #374151; }
+
 .swu-license-form input[type="text"] {
-	max-width: 420px;
+	border-radius: 9px !important;
+	border-color: #e2e8f0 !important;
+	font-size: 13px;
+	height: 36px;
 }
 
 .swu-license-actions {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 10px;
+	gap: 8px;
+	align-items: center;
 	margin-top: 4px;
 }
 
 .swu-note {
-	padding: 14px 16px;
-	border-radius: 14px;
-	background: #eff6ff;
-	border: 1px solid #bfdbfe;
-	color: #1d4ed8;
+	padding: 14px 22px;
+	font-size: 12px;
+	color: #64748b;
+	background: #fafcff;
+	border-top: 1px solid #f1f5f9;
 }
 
-.is-readonly {
-	opacity: 0.92;
+/* ─── Nastavení karta ────────────────────────────── */
+.swu-card {
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 18px;
+	padding: 22px;
+	box-shadow: 0 1px 4px rgba(15,23,42,0.05);
 }
 
-.is-readonly input:not([type="hidden"]),
-.is-readonly textarea,
-.is-readonly select,
-.is-readonly button {
-	pointer-events: none;
+.swu-card h2 {
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	color: #0f172a !important;
+	margin: 0 0 16px !important;
+	padding: 0 !important;
 }
 
 .swu-card .form-table th {
-	width: 220px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #374151;
+	padding: 12px 0;
+	width: 200px;
+	vertical-align: top;
 }
 
-.swu-card textarea.code {
+.swu-card .form-table td {
+	padding: 10px 0;
+	font-size: 13px;
+}
+
+.swu-card .form-table input[type="text"],
+.swu-card .form-table input[type="email"] {
+	border-radius: 9px !important;
+	border-color: #e2e8f0 !important;
+	font-size: 13px;
+	height: 36px;
+	width: 100%;
+	max-width: 520px;
+	box-sizing: border-box;
+}
+
+.swu-card .form-table textarea {
+	border-radius: 10px !important;
+	border-color: #e2e8f0 !important;
+	font-size: 13px;
+	width: 100%;
+	box-sizing: border-box;
+	resize: vertical;
+}
+
+.swu-card .form-table textarea.code {
 	font-family: Consolas, Monaco, monospace;
-	line-height: 1.5;
+	font-size: 12px;
+	line-height: 1.6;
 }
 
+.swu-card .form-table .description {
+	font-size: 12px;
+	color: #94a3b8;
+	margin-top: 6px;
+}
+
+.swu-card .form-table code {
+	background: #f1f5f9;
+	color: #0576b5;
+	padding: 1px 5px;
+	border-radius: 4px;
+	font-size: 12px;
+}
+
+/* Readonly stav */
+.is-readonly {
+	opacity: 0.65;
+	pointer-events: none;
+}
+
+/* ─── Responzivita ───────────────────────────────── */
 @media (max-width: 960px) {
-	.swu-wrap {
-		margin-right: 12px;
-	}
-
-	.swu-hero {
-		padding: 22px;
-		flex-direction: column;
-		align-items: stretch;
-	}
-
-	.swu-hero__content {
-		flex: 1 1 auto;
-		width: 100%;
-	}
-
-	.swu-hero h1 {
-		font-size: 34px;
-	}
-
-	.swu-hero__meta {
-		justify-content: flex-start;
-		width: 100%;
-		flex: 1 1 auto;
-		margin-top: 8px;
-	}
-
-	.swu-stat {
-		min-width: 0;
-		width: 100%;
-	}
-
-	.swu-licence-grid {
-		grid-template-columns: 1fr;
-	}
+	.swu-hero { padding: 22px 18px 26px; }
+	.swu-wrap { margin-right: 10px; }
+	.swu-main-content, .swu-page-notices { padding-left: 18px; padding-right: 18px; }
+	.swu-licence-grid { grid-template-columns: 1fr; }
+	.swu-licence-item { border-right: none; border-bottom: 1px solid #f1f5f9; }
+	.swu-licence-item:last-child { border-bottom: none; }
+	.swu-card .form-table th { width: 160px; }
 }
 
 @media (max-width: 782px) {
-	.swu-wrap {
-		margin-right: 10px;
+	.swu-hero { padding: 20px 16px 24px; flex-direction: column; gap: 14px; }
+	.swu-hero h1 { font-size: 24px !important; }
+	.swu-hero__content { width: 100%; flex: 0 0 auto; }
+	.swu-hero__meta {
+		flex-direction: row !important;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
 	}
+	.swu-stat { flex: 0 0 auto; text-align: left; padding: 10px 14px; }
+	.swu-stat strong { font-size: 18px; }
+	.swu-main-content, .swu-page-notices { padding-left: 16px; padding-right: 16px; }
+	.swu-card { padding: 18px; border-radius: 14px; }
+	.swu-card--licence { border-radius: 14px; }
+	.swu-card__head { padding: 16px 18px 14px; flex-direction: column; align-items: flex-start; gap: 10px; }
+	.swu-licence-item { padding: 12px 18px; }
+	.swu-license-form-wrap { padding: 16px 18px; }
+	.swu-card .form-table th { width: auto; display: block; padding-bottom: 4px; }
+	.swu-card .form-table td { display: block; padding-top: 0; }
+}
 
-	.swu-hero {
-		padding: 20px;
-		border-radius: 24px;
-	}
-
-	.swu-hero h1 {
-		font-size: 1.8rem;
-		line-height: 1.15;
-		margin-bottom: 12px;
-	}
-
-	.swu-badge {
-		margin-bottom: 16px;
-	}
-
-	.swu-stat {
-		padding: 16px 18px;
-		border-radius: 18px;
-	}
-
-	.swu-card {
-		padding: 18px;
-		border-radius: 12px;
-	}
-
-	.swu-card__head {
-		flex-direction: column;
-	}
-
-	.swu-card .form-table th {
-		width: auto;
-	}
+@media (max-width: 600px) {
+	.swu-hero { padding: 18px 14px 20px; }
+	.swu-hero h1 { font-size: 20px !important; }
+	.swu-badge { font-size: 10px; padding: 3px 10px; margin-bottom: 10px; }
 }
