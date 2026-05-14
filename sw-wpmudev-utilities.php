@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WPMU DEV Doplňky
  * Description: Smart Websites utility plugin pro WPMU DEV: přepis hlášky při chybném přihlášení, whitelabel OTP e-mail pro Defender, Base64 patch pro Branda Pro a nastavení e-mailu pro CSV exporty z Forminatoru.
- * Version: 1.0
+ * Version: 1.1
  * Author: Smart Websites
  * Author URI: https://smart-websites.cz
  * Update URI: https://github.com/paveltravnicek/sw-wpmudev-utilities/
@@ -323,6 +323,14 @@ final class SW_WPMUDEV_Utilities {
 			[],
 			file_exists( $base_dir . 'admin.css' ) ? (string) filemtime( $base_dir . 'admin.css' ) : self::get_plugin_version()
 		);
+
+		wp_enqueue_script(
+			'sw-wpmudev-utilities-admin',
+			$base_url . 'admin.js',
+			[],
+			file_exists( $base_dir . 'admin.js' ) ? (string) filemtime( $base_dir . 'admin.js' ) : self::get_plugin_version(),
+			true
+		);
 	}
 
 	public static function render_settings_page(): void {
@@ -342,14 +350,14 @@ final class SW_WPMUDEV_Utilities {
 			check_admin_referer( 'sw_forminator_csv_save' );
 
 			if ( ! $can_edit_settings ) {
-				echo '<div class="notice notice-warning"><p><strong>Nastavení nelze uložit, protože plugin momentálně nemá platnou licenci.</strong></p></div>';
+				$_saved_notice = '<div class="notice notice-warning"><p>' . esc_html__( 'Nastavení nelze uložit – plugin momentálně nemá platnou licenci.', 'sw-wpmudev-utilities' ) . '</p></div>';
 			} else {
 				$options['to']      = sanitize_text_field( wp_unslash( $_POST['to'] ?? '' ) );
 				$options['subject'] = sanitize_text_field( wp_unslash( $_POST['subject'] ?? '' ) );
 				$options['message'] = wp_kses_post( wp_unslash( $_POST['message'] ?? '' ) );
 
 				update_option( self::OPTION_KEY, $options );
-				echo '<div class="notice notice-success is-dismissible"><p><strong>Nastavení bylo uloženo.</strong></p></div>';
+				$_saved_notice = '<div class="notice notice-success"><p>' . esc_html__( 'Nastavení bylo uloženo.', 'sw-wpmudev-utilities' ) . '</p></div>';
 			}
 		}
 		?>
@@ -365,13 +373,24 @@ final class SW_WPMUDEV_Utilities {
 						<strong><?php echo esc_html( self::get_plugin_version() ); ?></strong>
 						<span><?php echo esc_html__( 'Verze pluginu', 'sw-wpmudev-utilities' ); ?></span>
 					</div>
+					<span class="swu-hero-status swu-hero-status--<?php echo $is_operational ? 'active' : 'inactive'; ?>">
+						<span class="swu-hero-status__dot"></span>
+						<?php echo $is_operational ? esc_html__( 'Platná licence', 'sw-wpmudev-utilities' ) : esc_html__( 'Licence chybí', 'sw-wpmudev-utilities' ); ?>
+					</span>
 				</div>
 			</div>
 
-			<?php if ( ! empty( $_GET['swu_license_message'] ) ) : ?>
-				<div class="notice notice-success"><p><?php echo esc_html( sanitize_text_field( (string) $_GET['swu_license_message'] ) ); ?></p></div>
-			<?php endif; ?>
+			<div class="swu-page-notices">
+				<?php if ( ! empty( $_saved_notice ) ) echo wp_kses_post( $_saved_notice ); ?>
+				<?php if ( ! empty( $_GET['swu_license_message'] ) ) : ?>
+					<div class="notice notice-success"><p><?php echo esc_html( sanitize_text_field( (string) $_GET['swu_license_message'] ) ); ?></p></div>
+				<?php endif; ?>
+				<?php if ( ! $can_edit_settings ) : ?>
+					<div class="notice notice-warning"><p><?php echo esc_html__( 'Plugin momentálně nemá platnou licenci. Nastavení zůstává pouze pro čtení a funkce pluginu se neprovádějí.', 'sw-wpmudev-utilities' ); ?></p></div>
+				<?php endif; ?>
+			</div>
 
+			<div class="swu-main-content">
 			<div class="swu-card swu-card--licence">
 				<div class="swu-card__head">
 					<div>
@@ -420,10 +439,6 @@ final class SW_WPMUDEV_Utilities {
 				<?php endif; ?>
 			</div>
 
-			<?php if ( ! $can_edit_settings ) : ?>
-				<div class="notice notice-warning"><p><?php echo esc_html__( 'Plugin momentálně nemá platnou licenci. Nastavení zůstává pouze pro čtení a funkce pluginu se neprovádějí.', 'sw-wpmudev-utilities' ); ?></p></div>
-			<?php endif; ?>
-
 			<div class="swu-card">
 				<form method="post" class="<?php echo $can_edit_settings ? '' : 'is-readonly'; ?>">
 					<?php wp_nonce_field( 'sw_forminator_csv_save' ); ?>
@@ -456,6 +471,7 @@ final class SW_WPMUDEV_Utilities {
 					<?php submit_button( 'Uložit nastavení', 'primary', 'sw_forminator_csv_save', false, $can_edit_settings ? [] : [ 'disabled' => 'disabled' ] ); ?>
 				</form>
 			</div>
+			</div><!-- /.swu-main-content -->
 		</div>
 		<?php
 	}
